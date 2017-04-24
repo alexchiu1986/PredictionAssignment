@@ -1,0 +1,91 @@
+---
+title: "Prediction Assignment Writeup"
+output:
+  html_document:
+    keep_md: true
+  
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,warning=FALSE, message=FALSE)
+```
+
+## Introduction
+
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement - a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways.  
+  
+The goal of the project is to predict the manner in which they did the exercise. This is the "classe" variable in the training set. Use any of the other variables to predict with.   
+
+## Preparing Data
+### Loading libraries
+```{r}
+library(caret)
+library(rpart)
+library(rpart.plot)
+library(RColorBrewer)
+library(rattle)
+library(randomForest)
+library(ggplot2)
+```
+
+### Loading data
+```{r}
+if (!file.exists("pml-training.csv")){
+        download.file("http://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv", destfile = "pml-training.csv")
+}
+if (!file.exists("pml-testing.csv")){
+    download.file("http://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv", destfile = "pml-testing.csv")
+}
+
+training <- read.csv("pml-training.csv", na.strings = c("NA", "#DIV/0!", ""))
+testing <- read.csv("pml-testing.csv", na.strings = c("NA", "#DIV/0!", ""))
+dim(training); dim(testing)
+```
+  
+### Cleaning data
+Removed the columns with NA
+```{r}
+training <- training[, colSums(is.na(training)) == 0]
+testing <- testing[, colSums(is.na(testing)) == 0]
+dim(training); dim(testing)
+```
+  
+Remove unrelevant variables
+```{r}
+training <- training[, -c(1:7)]
+testing <- testing[, -c(1:7)]
+dim(training); dim(testing)
+```
+### Data Partitioning
+```{r}
+inTrain <- createDataPartition(training$classe, p=0.70, list=F)
+train_data <- training[inTrain, ]
+test_data <- training[-inTrain, ]
+```
+
+## Modelling and Prediction
+  
+### Tree Method
+```{r}
+modfit1 <- train(classe ~ .,method='rpart',data=train_data)
+fancyRpartPlot(modfit1$finalModel) 
+predictions <- predict(modfit1, newdata = test_data)
+confusionMatrix(predictions, test_data$classe)
+```
+
+  
+### Random Forest
+```{r}
+modfit2 <- randomForest(classe~.,data=training,ntree=100)
+modfit2
+predictions <- predict(modfit2, newdata=test_data)
+confusionMatrix(predictions, test_data$classe)
+```
+  
+## Conclusion
+Random Forest model has a much higher accuracy than Decision Tree
+It can be used to predict the testing data
+```{r}
+answers <- predict(modfit2, testing)
+answers
+```
